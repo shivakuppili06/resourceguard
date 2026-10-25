@@ -53,25 +53,67 @@ alternative to Kubecost.
 
 See `docs/ROADMAP.md` for the week-by-week plan.
 
-## Quickstart (local)
+## Local Development
 
+### 1. Start PostgreSQL
 ```bash
-# 1. Build images
+docker compose up -d postgres
+```
+
+### 2. Configure Environment & Python Virtual Environment
+```bash
+cp backend/.env.example backend/.env
+cd backend
+python -m venv .venv
+# On Windows:
+.\.venv\Scripts\activate
+# On Linux/macOS:
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Connect to a Local Kubernetes Cluster
+```bash
+kind create cluster --name resourceguard
+
+# Install metrics-server for CPU/memory usage metrics
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl patch deployment metrics-server -n kube-system --type="json" -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+```
+
+### 4. Run the Backend & Frontend
+In terminal 1 (Backend API):
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+- Liveness check: `http://localhost:8000/healthz`
+- Readiness check (includes DB status): `http://localhost:8000/readyz`
+- Interactive API documentation: `http://localhost:8000/docs`
+
+In terminal 2 (Frontend Dashboard):
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open `http://localhost:5173/` and click **"Run scan now"** to execute a live cluster scan.
+
+### 5. Running Full In-Cluster Deployment (Stage 1 Manifests)
+Alternatively, to run the entire stack inside the `kind` cluster with Kubernetes manifests:
+```bash
+# 1. Build local container images
 docker build -t resourceguard-backend:local ./backend
 docker build -t resourceguard-frontend:local ./frontend
 
-# 2. Start a local cluster
-kind create cluster --name resourceguard
-
-# 3. Load images into kind
+# 2. Load images into the kind cluster
 kind load docker-image resourceguard-backend:local --name resourceguard
 kind load docker-image resourceguard-frontend:local --name resourceguard
 
-# 4. Deploy
+# 3. Deploy manifests
 kubectl apply -f k8s/base/
 
-# 5. Port-forward and open the dashboard
-kubectl port-forward svc/resourceguard-frontend 5173:80
+# 4. Port-forward frontend service
+kubectl port-forward svc/resourceguard-frontend 5173:80 -n resourceguard
 ```
 
 ## License
