@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-nightly-scan
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: {{ .Release.Name }}-backend
+          restartPolicy: OnFailure
+          containers:
+            - name: scan
+              image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+              command: ["python", "-m", "app.scan"]
+              envFrom:
+                - configMapRef:
+                    name: {{ .Release.Name }}-config
+              env:
+                {{- if or .Values.secrets.databaseUrl .Values.postgres.enabled }}
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Release.Name }}-secrets
+                      key: database-url
+                {{- end }}
+              resources:
+                {{- toYaml .Values.backend.resources | nindent 16 }}

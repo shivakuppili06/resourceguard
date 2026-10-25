@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: resourceguard-nightly-scan
+  namespace: resourceguard
+spec:
+  schedule: "0 2 * * *"  # 2am daily
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: resourceguard-backend
+          restartPolicy: OnFailure
+          containers:
+            - name: scan
+              image: resourceguard-backend:local
+              command: ["python", "-m", "app.scan"]
+              envFrom:
+                - configMapRef:
+                    name: resourceguard-config
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: resourceguard-postgres-secret
+                      key: database-url
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 300m
+                  memory: 256Mi

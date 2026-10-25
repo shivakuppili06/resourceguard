@@ -1,0 +1,62 @@
+backend:
+  image:
+    # Local/kind default. CI (.github/workflows/ci-cd.yaml) overrides this
+    # to the real GHCR path at deploy time — ghcr.io/<owner>/<repo>/resourceguard-backend —
+    # since GHCR nests images under the publishing repo by default and
+    # that path is not knowable from inside this chart. If you deploy
+    # manually instead of via the pipeline, pass the matching
+    # --set backend.image.repository=ghcr.io/OWNER/REPO/resourceguard-backend
+    repository: resourceguard-backend
+    tag: local
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 70
+
+frontend:
+  image:
+    # See the comment on backend.image.repository above — same reasoning.
+    repository: resourceguard-frontend
+    tag: local
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 200m, memory: 128Mi }
+
+cronjob:
+  schedule: "0 2 * * *"
+
+postgres:
+  enabled: true           # in-cluster Postgres for scan history (durable storage)
+  database: resourceguard
+  user: resourceguard
+  password: "changeme"    # override with --set postgres.password=... or a sealed secret; never commit a real value
+  storageSize: 2Gi
+  storageClassName: ""    # empty = cluster default StorageClass
+  resources:
+    requests: { cpu: 100m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+ingress:
+  enabled: false
+  host: resourceguard.local
+  tls:
+    enabled: false
+    secretName: resourceguard-tls
+
+config:
+  logLevel: info
+
+secrets:
+  # Leave blank to auto-derive from the in-cluster postgres.* values above
+  # (see templates/config.yaml). Set explicitly to point at an external/
+  # managed Postgres instance instead (e.g. RDS) and set postgres.enabled=false.
+  databaseUrl: ""
+  slackWebhookUrl: ""

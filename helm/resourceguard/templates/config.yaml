@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+data:
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  SCAN_SCHEDULE: {{ .Values.cronjob.schedule | quote }}
+---
+{{- $dbUrl := .Values.secrets.databaseUrl }}
+{{- if and (not $dbUrl) .Values.postgres.enabled }}
+{{/* Auto-derive the connection string from the in-cluster Postgres StatefulSet
+     (templates/postgres.yaml) so the two don't have to be kept in sync by hand. */}}
+{{- $dbUrl = printf "postgresql://%s:%s@%s-postgres:5432/%s" .Values.postgres.user .Values.postgres.password .Release.Name .Values.postgres.database }}
+{{- end }}
+{{- if or $dbUrl .Values.secrets.slackWebhookUrl }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Release.Name }}-secrets
+type: Opaque
+stringData:
+  {{- if $dbUrl }}
+  database-url: {{ $dbUrl | quote }}
+  {{- end }}
+  {{- if .Values.secrets.slackWebhookUrl }}
+  slack-webhook-url: {{ .Values.secrets.slackWebhookUrl | quote }}
+  {{- end }}
+{{- end }}

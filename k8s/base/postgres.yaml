@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: resourceguard-postgres
+  namespace: resourceguard
+spec:
+  serviceName: resourceguard-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: resourceguard-postgres
+  template:
+    metadata:
+      labels:
+        app: resourceguard-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: resourceguard
+            - name: POSTGRES_USER
+              value: resourceguard
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: resourceguard-postgres-secret
+                  key: password
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "resourceguard"]
+            initialDelaySeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: resourceguard-postgres
+  namespace: resourceguard
+spec:
+  clusterIP: None
+  selector:
+    app: resourceguard-postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: resourceguard-postgres-secret
+  namespace: resourceguard
+type: Opaque
+stringData:
+  # Local/dev only — do not reuse these values anywhere real.
+  password: "localdevpassword"
+  # Raw manifests have no templating, so the full connection string is
+  # duplicated here rather than derived (Helm's config.yaml derives it
+  # instead — see helm/resourceguard/templates/config.yaml).
+  database-url: "postgresql://resourceguard:localdevpassword@resourceguard-postgres:5432/resourceguard"

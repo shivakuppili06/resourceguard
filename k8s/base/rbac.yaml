@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: resourceguard-backend
+  namespace: resourceguard
+---
+# Read-only, cluster-wide: this is a monitoring tool, not a controller.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: resourceguard-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces", "nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: resourceguard-reader-binding
+subjects:
+  - kind: ServiceAccount
+    name: resourceguard-backend
+    namespace: resourceguard
+roleRef:
+  kind: ClusterRole
+  name: resourceguard-reader
+  apiGroup: rbac.authorization.k8s.io

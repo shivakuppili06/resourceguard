@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: resourceguard-config
+  namespace: resourceguard
+data:
+  SCAN_SCHEDULE: "0 2 * * *"   # consumed by the Helm-templated CronJob (Stage 2)
+  LOG_LEVEL: "info"
