@@ -98,6 +98,11 @@ npm run dev
 ```
 Open `http://localhost:5173/` and click **"Run scan now"** to execute a live cluster scan.
 
+---
+
+> [!NOTE]
+> Sections 1–4 (hybrid local dev: Docker Compose Postgres + host venv/Vite) and Section 5 (full in-cluster deployment) are two **separate, alternative workflows**, not sequential steps. Section 5 deploys its own in-cluster Postgres StatefulSet (`k8s/base/postgres.yaml`) and does not use the Docker Compose instance from Section 1.
+
 ### 5. Running Full In-Cluster Deployment (Stage 1 Manifests)
 Alternatively, to run the entire stack inside the `kind` cluster with Kubernetes manifests:
 ```bash
